@@ -35,16 +35,30 @@ router
   .get((req, res) => {
     const { _id } = req.params;
     //==>
-    Expense.aggregate([
-      { $match: { budget: _id }},
-      { $group : {
-        _id: "$budget",
-        sum: { $sum: "$amount" }
-      }}
-    ])
-      .then(expenses => res.json(expenses))
-      .catch(err => res.status(500).json({ error: err.message }));
-  })
+    const fetches = [
+      Budget.findOne({ _id }),
+      Expense.aggregate([
+        { $match: {} },
+        { $group: {
+          _id: "$budget",
+          sum: { $sum: "$amount" }
+        }}
+      ])
+    ];
+    Promise.all(fetches)
+      .then(results => {
+        let {title, budgetAmount} = results[0];
+        let { sum } = results[1][0];
+        let answer = {
+          budgetName: title,
+          budgetAmount: budgetAmount,
+          totalSpent: sum,
+          amountLeftInBudget: budgetAmount - sum
+        };
+        res.json(answer);
+      })
+      .catch(error => res.status(500).json({ error }));
+  });
 
 module.exports = router;
 /*
